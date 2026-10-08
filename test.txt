@@ -1,7 +1,7 @@
-num a = 5;
+num a = 2 + 3;
 num b = 2;
 
-if (a > b) {
+if (2 > 1) {
     print (a);
 }
 else {
