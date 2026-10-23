@@ -4,18 +4,25 @@ from enum import Enum, auto
 class TokenType(Enum):
     # Keywords
     NUM = auto()
+    BOOL = auto()
+    LETTER = auto()
+    TEXT = auto()
     IF = auto()
     ELSE = auto()
+    LOOP = auto()
     PRINT = auto()
 
     # Identifiers and literals
     IDENTIFIER = auto()
     INTEGER = auto()
     STRING = auto()
+    CHARACTER = auto()
+    BOOLEAN = auto()
 
     # Operators
     ASSIGN = auto()
     PLUS = auto()
+    MINUS = auto()
     GREATER = auto()
 
     # Punctuation

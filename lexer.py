@@ -3,8 +3,12 @@ from tokens import Token, TokenType
 
 KEYWORDS = {
     "num": TokenType.NUM,
+    "bool": TokenType.BOOL,
+    "letter": TokenType.LETTER,
+    "text": TokenType.TEXT,
     "if": TokenType.IF,
     "else": TokenType.ELSE,
+    "loop": TokenType.LOOP,
     "print": TokenType.PRINT,
 }
 
@@ -29,34 +33,35 @@ class Lexer:
         while self.current_char() is not None:
             char = self.current_char()
 
-            # Ignore spaces, tabs, and carriage returns
             if char in " \t\r":
                 self.advance()
 
-            # Track line numbers
             elif char == "\n":
                 self.line += 1
                 self.advance()
 
-            # Identifiers and keywords
             elif char.isalpha() or char == "_":
                 tokens.append(self.read_identifier())
 
-            # Integer literals
             elif char.isdigit():
                 tokens.append(self.read_integer())
 
-            # String literals
             elif char == '"':
                 tokens.append(self.read_string())
 
-            # Single-character operators and punctuation
+            elif char == "'":
+                tokens.append(self.read_character())
+
             elif char == "=":
                 tokens.append(Token(TokenType.ASSIGN, char, self.line))
                 self.advance()
 
             elif char == "+":
                 tokens.append(Token(TokenType.PLUS, char, self.line))
+                self.advance()
+
+            elif char == "-":
+                tokens.append(Token(TokenType.MINUS, char, self.line))
                 self.advance()
 
             elif char == ">":
@@ -112,6 +117,11 @@ class Lexer:
 
         if lexeme in KEYWORDS:
             token_type = KEYWORDS[lexeme]
+
+            if lexeme == "true" or lexeme == "false":
+                token_type = TokenType.BOOLEAN
+        elif lexeme == "true" or lexeme == "false":
+            token_type = TokenType.BOOLEAN
         else:
             token_type = TokenType.IDENTIFIER
 
@@ -133,12 +143,13 @@ class Lexer:
     def read_string(self):
         start_line = self.line
 
-        # Skip opening quote
         self.advance()
-
         start = self.position
 
-        while self.current_char() is not None and self.current_char() != '"':
+        while (
+            self.current_char() is not None
+            and self.current_char() != '"'
+        ):
             if self.current_char() == "\n":
                 self.line += 1
 
@@ -151,8 +162,34 @@ class Lexer:
             )
 
         lexeme = self.source[start:self.position]
-
-        # Skip closing quote
         self.advance()
 
         return Token(TokenType.STRING, lexeme, start_line)
+
+    def read_character(self):
+        start_line = self.line
+
+        self.advance()
+
+        if self.current_char() is None:
+            raise Exception(
+                f"Lexical Error at line {start_line}: "
+                "Unterminated character literal"
+            )
+
+        character = self.current_char()
+        self.advance()
+
+        if self.current_char() != "'":
+            raise Exception(
+                f"Lexical Error at line {start_line}: "
+                "Character literal must contain exactly one character"
+            )
+
+        self.advance()
+
+        return Token(
+            TokenType.CHARACTER,
+            character,
+            start_line
+        )

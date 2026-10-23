@@ -2,11 +2,15 @@ from tokens import TokenType
 from ast_nodes import (
     Program,
     Declaration,
+    Assignment,
     IfStatement,
+    LoopStatement,
     PrintStatement,
     BinaryExpression,
     Identifier,
     IntegerLiteral,
+    BooleanLiteral,
+    CharacterLiteral,
     StringLiteral,
 )
 
@@ -53,14 +57,25 @@ class Parser:
     def parse_statement(self):
         token_type = self.current_token().token_type
 
-        if token_type == TokenType.NUM:
+        if token_type in (
+            TokenType.NUM,
+            TokenType.BOOL,
+            TokenType.LETTER,
+            TokenType.TEXT,
+        ):
             return self.parse_declaration()
 
         if token_type == TokenType.IF:
             return self.parse_if_statement()
 
+        if token_type == TokenType.LOOP:
+            return self.parse_loop_statement()
+
         if token_type == TokenType.PRINT:
             return self.parse_print_statement()
+
+        if token_type == TokenType.IDENTIFIER:
+            return self.parse_assignment()
 
         raise Exception(
             f"Syntax Error at line {self.current_token().line}: "
@@ -69,7 +84,17 @@ class Parser:
         )
 
     def parse_declaration(self):
-        self.expect(TokenType.NUM)
+        type_token = self.current_token()
+        self.advance()
+
+        type_map = {
+            TokenType.NUM: "num",
+            TokenType.BOOL: "bool",
+            TokenType.LETTER: "letter",
+            TokenType.TEXT: "text",
+        }
+
+        data_type = type_map[type_token.token_type]
 
         name = self.expect(TokenType.IDENTIFIER)
 
@@ -80,7 +105,21 @@ class Parser:
         self.expect(TokenType.SEMICOLON)
 
         return Declaration(
-            "num",
+            data_type,
+            name.lexeme,
+            value
+        )
+
+    def parse_assignment(self):
+        name = self.expect(TokenType.IDENTIFIER)
+
+        self.expect(TokenType.ASSIGN)
+
+        value = self.parse_expression()
+
+        self.expect(TokenType.SEMICOLON)
+
+        return Assignment(
             name.lexeme,
             value
         )
@@ -105,6 +144,22 @@ class Parser:
             condition,
             then_block,
             else_block
+        )
+
+    def parse_loop_statement(self):
+        self.expect(TokenType.LOOP)
+
+        self.expect(TokenType.LPAREN)
+
+        condition = self.parse_expression()
+
+        self.expect(TokenType.RPAREN)
+
+        body = self.parse_block()
+
+        return LoopStatement(
+            condition,
+            body
         )
 
     def parse_block(self):
@@ -142,7 +197,6 @@ class Parser:
 
             self.expect(TokenType.RPAREN)
         else:
-            # Backward-compatible form: print <expr>; with no parens
             arguments.append(self.parse_expression())
 
         self.expect(TokenType.SEMICOLON)
@@ -154,6 +208,7 @@ class Parser:
 
         while self.current_token().token_type in (
             TokenType.PLUS,
+            TokenType.MINUS,
             TokenType.GREATER,
         ):
             operator = self.current_token()
@@ -172,9 +227,30 @@ class Parser:
     def parse_primary(self):
         token = self.current_token()
 
+        if token.token_type == TokenType.MINUS:
+            self.advance()
+
+            value = self.expect(TokenType.INTEGER)
+
+            return BinaryExpression(
+                IntegerLiteral(0),
+                "-",
+                IntegerLiteral(int(value.lexeme))
+            )
+
         if token.token_type == TokenType.INTEGER:
             self.advance()
             return IntegerLiteral(int(token.lexeme))
+
+        if token.token_type == TokenType.BOOLEAN:
+            self.advance()
+            return BooleanLiteral(
+                token.lexeme == "true"
+            )
+
+        if token.token_type == TokenType.CHARACTER:
+            self.advance()
+            return CharacterLiteral(token.lexeme)
 
         if token.token_type == TokenType.STRING:
             self.advance()

@@ -1,31 +1,29 @@
 from ast_nodes import (
     Program,
     Declaration,
+    Assignment,
     IfStatement,
+    LoopStatement,
     PrintStatement,
     BinaryExpression,
     Identifier,
     IntegerLiteral,
+    BooleanLiteral,
+    CharacterLiteral,
     StringLiteral,
 )
 
 
 class CodeGenerator:
-    """
-    Converts the AST into stack-machine instructions.
-    """
-
     def __init__(self):
         self.instructions = []
 
     def emit(self, opcode, *operands):
-        """Add an instruction and return its index."""
         index = len(self.instructions)
         self.instructions.append((opcode, *operands))
         return index
 
     def generate(self, program):
-        """Generate stack-machine code from the AST."""
         self.instructions = []
         self.visit(program)
         return self.instructions
@@ -37,6 +35,10 @@ class CodeGenerator:
                 self.visit(statement)
 
         elif isinstance(node, Declaration):
+            self.visit(node.value)
+            self.emit("STORE", node.name)
+
+        elif isinstance(node, Assignment):
             self.visit(node.value)
             self.emit("STORE", node.name)
 
@@ -76,6 +78,25 @@ class CodeGenerator:
                     end,
                 )
 
+        elif isinstance(node, LoopStatement):
+            loop_start = len(self.instructions)
+
+            self.visit(node.condition)
+
+            jump_if_false = self.emit("JUMP_IF_FALSE", None)
+
+            for statement in node.body:
+                self.visit(statement)
+
+            self.emit("JUMP", loop_start)
+
+            loop_end = len(self.instructions)
+
+            self.instructions[jump_if_false] = (
+                "JUMP_IF_FALSE",
+                loop_end,
+            )
+
         elif isinstance(node, PrintStatement):
             for argument in node.arguments:
                 self.visit(argument)
@@ -88,6 +109,9 @@ class CodeGenerator:
 
             if node.operator == "+":
                 self.emit("ADD")
+
+            elif node.operator == "-":
+                self.emit("SUB")
 
             elif node.operator == ">":
                 self.emit("GT")
@@ -102,6 +126,12 @@ class CodeGenerator:
             self.emit("LOAD", node.name)
 
         elif isinstance(node, IntegerLiteral):
+            self.emit("PUSH", node.value)
+
+        elif isinstance(node, BooleanLiteral):
+            self.emit("PUSH", node.value)
+
+        elif isinstance(node, CharacterLiteral):
             self.emit("PUSH", node.value)
 
         elif isinstance(node, StringLiteral):

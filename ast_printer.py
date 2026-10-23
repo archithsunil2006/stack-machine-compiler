@@ -1,104 +1,167 @@
 from ast_nodes import (
     Program,
     Declaration,
+    Assignment,
     IfStatement,
+    LoopStatement,
     PrintStatement,
     BinaryExpression,
     Identifier,
     IntegerLiteral,
+    BooleanLiteral,
+    CharacterLiteral,
     StringLiteral,
 )
 
 
-def _describe(node):
-    """Return a short one-line label for a single AST node."""
+def print_ast(node):
+    visit(node)
+
+
+def visit(node, prefix="", is_last=True):
+    connector = "└── " if is_last else "├── "
 
     if isinstance(node, Program):
-        return "Program"
+        print("Program")
 
-    if isinstance(node, Declaration):
-        return f"Declaration (type={node.data_type}, name={node.name})"
-
-    if isinstance(node, IfStatement):
-        return "IfStatement"
-
-    if isinstance(node, PrintStatement):
-        return "Print"
-
-    if isinstance(node, BinaryExpression):
-        return f"BinaryExpression({node.operator})"
-
-    if isinstance(node, Identifier):
-        return f"Identifier({node.name})"
-
-    if isinstance(node, IntegerLiteral):
-        return f"IntegerLiteral({node.value})"
-
-    if isinstance(node, StringLiteral):
-        return f"StringLiteral({node.value!r})"
-
-    return repr(node)
-
-
-def _children(node):
-    """
-    Return this node's children as a list of (label, child) pairs.
-    label is None when the child needs no name (e.g. left/right of a
-    binary expression). A child may itself be a list of statements
-    (e.g. an if-statement's then/else block) - the printer below
-    knows how to expand that.
-    """
-
-    if isinstance(node, Program):
-        return [(None, statement) for statement in node.statements]
-
-    if isinstance(node, Declaration):
-        return [("value", node.value)]
-
-    if isinstance(node, IfStatement):
-        children = [
-            ("condition", node.condition),
-            ("then", node.then_block),
-        ]
-        if node.else_block is not None:
-            children.append(("else", node.else_block))
-        return children
-
-    if isinstance(node, PrintStatement):
-        return [(None, argument) for argument in node.arguments]
-
-    if isinstance(node, BinaryExpression):
-        return [(None, node.left), (None, node.right)]
-
-    # Identifier, IntegerLiteral, StringLiteral are leaves - no children
-    return []
-
-
-def _print_children(children, prefix):
-    for index, (label, child) in enumerate(children):
-        is_last = index == len(children) - 1
-        connector = "└── " if is_last else "├── "
-        extension = "    " if is_last else "│   "
-
-        if isinstance(child, list):
-            # A block of statements (then/else) - print the label as a
-            # bare grouping line, then descend into each statement.
-            print(f"{prefix}{connector}{label}:")
-            _print_children(
-                [(None, item) for item in child],
-                prefix + extension,
+        for i, statement in enumerate(node.statements):
+            visit(
+                statement,
+                "",
+                i == len(node.statements) - 1
             )
-        else:
-            text = _describe(child)
-            if label is not None:
-                text = f"{label}: {text}"
 
-            print(f"{prefix}{connector}{text}")
-            _print_children(_children(child), prefix + extension)
+    elif isinstance(node, Declaration):
+        print(
+            prefix
+            + connector
+            + f"Declaration (type={node.data_type}, "
+              f"name={node.name})"
+        )
 
+        visit(
+            node.value,
+            prefix + ("    " if is_last else "│   "),
+            True
+        )
 
-def print_ast(root):
-    """Pretty-print an AST rooted at `root` as an indented branch diagram."""
+    elif isinstance(node, Assignment):
+        print(
+            prefix
+            + connector
+            + f"Assignment (name={node.name})"
+        )
 
-    print(_describe(root))
-    _print_children(_children(root), prefix="")
+        visit(
+            node.value,
+            prefix + ("    " if is_last else "│   "),
+            True
+        )
+
+    elif isinstance(node, IfStatement):
+        print(prefix + connector + "If")
+
+        child_prefix = prefix + (
+            "    " if is_last else "│   "
+        )
+
+        visit(node.condition, child_prefix, False)
+
+        for i, statement in enumerate(node.then_block):
+            visit(
+                statement,
+                child_prefix,
+                node.else_block is None
+                and i == len(node.then_block) - 1
+            )
+
+        if node.else_block is not None:
+            print(child_prefix + "└── Else")
+
+            else_prefix = child_prefix + "    "
+
+            for i, statement in enumerate(node.else_block):
+                visit(
+                    statement,
+                    else_prefix,
+                    i == len(node.else_block) - 1
+                )
+
+    elif isinstance(node, LoopStatement):
+        print(prefix + connector + "Loop")
+
+        child_prefix = prefix + (
+            "    " if is_last else "│   "
+        )
+
+        visit(node.condition, child_prefix, False)
+
+        for i, statement in enumerate(node.body):
+            visit(
+                statement,
+                child_prefix,
+                i == len(node.body) - 1
+            )
+
+    elif isinstance(node, PrintStatement):
+        print(prefix + connector + "Print")
+
+        child_prefix = prefix + (
+            "    " if is_last else "│   "
+        )
+
+        for i, argument in enumerate(node.arguments):
+            visit(
+                argument,
+                child_prefix,
+                i == len(node.arguments) - 1
+            )
+
+    elif isinstance(node, BinaryExpression):
+        print(
+            prefix
+            + connector
+            + f"BinaryExpression('{node.operator}')"
+        )
+
+        child_prefix = prefix + (
+            "    " if is_last else "│   "
+        )
+
+        visit(node.left, child_prefix, False)
+        visit(node.right, child_prefix, True)
+
+    elif isinstance(node, Identifier):
+        print(
+            prefix
+            + connector
+            + f"Identifier({node.name})"
+        )
+
+    elif isinstance(node, IntegerLiteral):
+        print(
+            prefix
+            + connector
+            + f"IntegerLiteral({node.value})"
+        )
+
+    elif isinstance(node, BooleanLiteral):
+        print(
+            prefix
+            + connector
+            + f"BooleanLiteral({node.value})"
+        )
+
+    elif isinstance(node, CharacterLiteral):
+        print(
+            prefix
+            + connector
+            + f"CharacterLiteral('{node.value}')"
+        )
+
+    elif isinstance(node, StringLiteral):
+        print(
+            prefix
+            + connector
+            + f"StringLiteral('{node.value}')"
+        )

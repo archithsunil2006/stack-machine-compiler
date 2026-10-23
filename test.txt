@@ -1,11 +1,6 @@
-num a = 2 + 3;
-num b = 2;
+bool active = true;
 
-if (2 > 1) {
-    print (a);
+loop (active) {
+    print(active);
+    active = false;
 }
-else {
-    print (b);
-}
-
-print ("sum = ",a+b);

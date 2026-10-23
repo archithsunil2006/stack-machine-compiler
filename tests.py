@@ -86,6 +86,33 @@ class CompilerTests(unittest.TestCase):
             )
         )
 
+    def test_loop(self):
+        source = """
+        num a = 3;
+
+        loop (a > 0) {
+            print(a);
+            a = a + -1;
+        }
+        """
+
+        instructions, errors = compile_source(source)
+
+        self.assertEqual(errors, [])
+
+        vm = StackVM(instructions)
+        trace = vm.run()
+
+        self.assertEqual(vm.variables["a"], 0)
+
+        self.assertTrue(
+            any(
+                step["instruction"][0] == "JUMP"
+                and step["instruction"][1] < step["pc"]
+                for step in trace
+            )
+        )
+
     def test_undeclared_variable(self):
         source = """
         print(a);
